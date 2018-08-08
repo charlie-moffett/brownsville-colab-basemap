@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Brownsville Co-Lab Challenge: Baselines</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Helvetica Neue', Helvetica, Arial, Sans-serif;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 20px;
+      line-height: 30px;
+    }
+
+    h2 {
+      font-size: 14px;
+      line-height: 20px;
+      margin-bottom: 10px;
+    }
+
+    a {
+      text-decoration: none;
+      color: #2dc4b2;
+    }
+    .session {
+      margin-bottom: 20px;
+    }
+
+    .row {
+      height: 12px;
+      width: 100%;
+    }
+
+    .colors {
+      background: linear-gradient(to right, #2dc4b2, #3bb3c3, #669ec4, #8b88b6, #a2719b, #aa5e79);
+      margin-bottom: 5px;
+    }
+
+    .label {
+      width: 15%;
+      display: inline-block;
+      text-align: center;
+    }
+    #panel {
+      background: white; 
+      width: 400px; 
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      position: relative;
+      right: 16px;
+      top: 16px;
+      box-shadow: 0 0 4px 0 rgba(0, 0, 0, 0.1);
+      color: rgba(0, 0, 0, 0.5);
+    }
+    h4 {
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      margin: 0;
+      padding: 16px;
+    }
+    ul {
+      list-style-type: none;
+      margin: 0;
+      padding: 16px;
+    }
+    ul span {
+      width: 10px;
+      height: 10px;
+      display: inline-block;
+      margin-right: 8px;
+      border-radius: 50%;
+    }
+    dd {
+      margin-left: 0;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .mapboxgl-popup-content {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.5);
+      min-width: 250px;
+      max-width: 400px;
+      box-shadow: 0 0 4px 0 rgba(0, 0, 0, 0.1);
+    }
+    dl {
+      margin-bottom: 0;
+    }
+    #legend {
+      padding: 10px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      line-height: 18px;
+      height: 60px;
+      margin-bottom: 40px;
+      width: 150px;
+    }
+
+    .legend-key {
+      display: inline-block;
+      border-radius: 20%;
+      width: 10px;
+      height: 10px;
+      margin-right: 5px;
+    }
+    .map-overlay {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.8);
+      margin-right: 20px;
+      font-family: Arial, sans-serif;
+      overflow: auto;
+      border-radius: 3px;
+    }
+
+    #features {
+      top: 0;
+      height: 200px;
+      margin-top: 20px;
+      width: 250px;
+    }
+	</style>
+</head>
+<body>
+	<div id='panel'>
+	  <h4>Land Use</h4>
+	  <ul>
+	    <li><span style="background: #f9eddb;"></span>One & Two Family Buildings</li>
+	    <li><span style="background: #f6d9cb;"></span>Multi-Family Buildings</li>
+	    <li><span style="background: #f1b89c;"></span>Mixed Residential & Commercial Buildings</li>
+	    <li><span style="background: #df7649;"></span>Commercial & Office Buildings</li>
+	    <li><span style="background: #cf4f4f;"></span>Industrial & Manufacturing</li>
+	    <li><span style="background: #bec6cc;"></span>Transportation & Utility</li>
+	    <li><span style="background: #bde7f4;"></span>Public Facilities & Institutions</li>
+	    <li><span style="background: #a3d393;"></span>Open Space & Outdoor Recreation</li>
+	    <li><span style="background: #8da2b4;"></span>Parking Facilities</li>
+	    <li><span style="background: #e4e4e4;"></span>Vacant Land</li>
+	    <li><span style="background: #f9f9f9; border: 1px solid #ccc; box-sizing: border-box;"></span>No Data</li>
+	  </ul>  
+	</div>
+	<div id='map'></div>
+	<script>
+
+		// Create arrays of intervals and colors for legend
+		var colors = ['#f9eddb', '#f6d9cb', '#f1b89c', '#df7649'];
+		var layers = ['One & Two Family Buildings', 'Multi-Family Walk-Up Buildings', 'Multi-Family Elevator Buildings', 'Mixed Residential & Commercial Buildings']
+
+		// Add land use names for use in legend
+		var landuseNames = {
+		  '01': 'One & Two Family Buildings',
+		  '02': 'Multi-Family Walk-Up Buildings',
+		  '03': 'Multi-Family Elevator Buildings',
+		  '04': 'Mixed Residential & Commercial Buildings',
+		  '05': 'Commercial & Office Buildings',
+		  '06': 'Industrial & Manufacturing',
+		  '07': 'Transportation & Utility',
+		  '08': 'Public Facilities & Institutions',
+		  '09': 'Open Space & Outdoor Recreation', 
+		  '10': 'Parking Facilities',
+		  '11': 'Vacant Land',
+		};
+
+		// Put your access token here
+		mapboxgl.accessToken = 'pk.eyJ1IjoiY21vZmYiLCJhIjoiY2ppcXNsdmwwMHoxdTNxcGVwbGc0OWJsMiJ9.6UETcF4ksVHa7IcPNLmMgA';
+
+		// Load a new map in the 'map' HTML div
+		var map = new mapboxgl.Map({
+		    container: 'map',
+		    style: 'mapbox://styles/cmoff/cjjslo6r12jhb2rncadnmm55p',
+		    center: [-73.908534944, 40.6685606832],
+		    zoom: 14,
+		    minZoom: 9,
+		    maxZoom: 20,
+		});
+
+		map.on('load', function() {
+			// Add default pointer cursor
+			map.getCanvas().style.cursor = 'default';
+			// Load images of lightbulbs on Belmont at locations of streetpoles
+		    map.loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Gregor_%C4%8Cre%C5%A1nar_bulb.svg/200px-Gregor_%C4%8Cre%C5%A1nar_bulb.svg.png', function(error, image) {
+		        if (error) throw error;
+		        map.addImage('lightbulb', image);
+		        map.addLayer({
+		            "id": "points",
+		            "type": "symbol",
+		            "source": {
+		                "type": "geojson",
+		                "data": {
+		                    "type": "FeatureCollection",
+		                    "features": [{
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.909377, 40.668605]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.909541, 40.668502]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.909923, 40.668520]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.909025, 40.668593]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.908642, 40.668704]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.908406, 40.668685]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.908525, 40.668449]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.908052, 40.668790]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.907705, 40.668786]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.907494, 40.668870]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.907150, 40.668881]
+		                        }
+		                    }, {
+		                        "type": "Feature",
+		                        "geometry": {
+		                            "type": "Point",
+		                            "coordinates": [-73.906735, 40.668981]
+		                        }
+		                    }]
+		                }
+		            },
+		            "layout": {
+		                "icon-image": "lightbulb",
+		                "icon-size": 0.25
+		            }
+		        });
+		    });
+		    // Iterate through above arrays to create a legend
+		    for (var i = 0; i < layers.length; i++) {
+		      var layer = layers[i];
+		      var color = colors[i];
+		      var item = document.createElement('div');
+		      var key = document.createElement('span');
+		      key.className = 'legend-key';
+		      key.style.backgroundColor = color;
+
+		      var value = document.createElement('span');
+		      value.innerHTML = layer;
+		      item.appendChild(key);
+		      item.appendChild(value);
+		      legend.appendChild(item);
+		    }
+		});
+
+
+		map.on('click', function(event) {
+		  // console.log('Mouse Clicked');
+		  // console.log(event.point);
+
+		  var geometry = event.point;
+		  var parameters = {
+		    layers: ['bklots']
+		  };
+		  var features = map.queryRenderedFeatures(geometry, parameters);
+		  console.log(features);
+		  console.log(features.length + ' features');
+		  var lot = features[0];
+		  console.log(lot);
+		  
+		  if (features.length) {
+		    var bbl = lot.properties.BBL || '—';
+		    var landUse = landuseNames[lot.properties.LandUse] || '—';
+		    var zoneDist = lot.properties.ZoneDist1 || '—';
+		    var bldgClass = lot.properties.BldgClass || '—';
+		    var ownerName = lot.properties.OwnerName || '—';
+		    console.log(bbl, landUse, zoneDist, bldgClass, ownerName);
+		    
+		    var popup = new mapboxgl.Popup()
+		      .setLngLat(event.lngLat)
+		      .setHTML('<dl>' +
+		        '<dt>BBL</dt>' +
+		        '<dd>' + bbl + '</dd>' +
+		        '<dt>Land Use</dt>' +
+		        '<dd>' + landUse + '</dd>' +
+		        '<dt>Zoning District</dt>' +
+		        '<dd>' + zoneDist + '</dd>' +
+		        '<dt>Building Class</dt>' +
+		        '<dd>' + bldgClass + '</dd>' +
+		        '<dt>Owner</dt>' +
+		        '<dd>' + ownerName + '</dd>' +
+		      '</dl>')
+		      .addTo(map);
+		  }
+		});
+
+		// Add zoom and rotation controls to the map.
+		var nav = new mapboxgl.NavigationControl();
+		map.addControl(nav, 'top-left');
+
+	</script>
+</body>
+</html>
